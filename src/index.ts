@@ -1,21 +1,16 @@
-import { from, fromEvent, Observable } from 'rxjs';
-import { map, debounceTime, tap, distinctUntilChanged, filter } from 'rxjs/operators';
+import { fromEvent } from 'rxjs';
+import { switchMap, debounceTime } from 'rxjs/operators';
 
 
 const inputElement: HTMLInputElement = document.querySelector('input') as HTMLInputElement;
 const resultElement: HTMLDivElement = document.querySelector('#result') as HTMLDivElement;
 
-function request$(searchString: string): Observable<any> {
-    return from(fetch(`https://api.github.com/search/repositories?q=${searchString}`)
-        .then((res: Response) => res.json()));
-}
+const input$ = fromEvent(inputElement, 'input');
 
-const reposSearch$ = fromEvent(inputElement, 'input').pipe(
-    map(event => event.target.value),
-    filter(query => query),
-    debounceTime(1000),
-    distinctUntilChanged(),
-    tap(query => console.log(`${query}`))
-})
-
-reposSearch$.subscribe((data: string) => resultElement.innerHTML = data);
+// @ts-ignore
+input$.pipe(debounceTime(600), switchMap((event: KeyboardEvent) => {
+    return fetch(`https://api.github.com/search/repositories?q=${(event.target as HTMLInputElement).value}`)
+        .then(response => response.json());
+})).subscribe((response: any) => response.items.map((item: any) => {
+    resultElement.insertAdjacentHTML("beforeend", `<li><a href="${item.html_url}">${item.full_name}</a></li>`)
+}));
